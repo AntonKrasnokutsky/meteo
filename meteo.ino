@@ -582,4 +582,5 @@ void loop()
   pushBtn();
   
   myOLED.update();
+  delay(100);
 }
