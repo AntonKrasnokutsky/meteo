@@ -1,20 +1,3 @@
-// Переменные, создаваемые процессом сборки,
-// когда компилируется скетч
-extern int __bss_end;
-extern void *__brkval;
-
-// Функция, возвращающая количество свободного ОЗУ (RAM)
-int memoryFree()
-{
-   int freeValue;
-   if((int)__brkval == 0)
-      freeValue = ((int)&freeValue) - ((int)&__bss_end);
-   else
-      freeValue = ((int)&freeValue) - ((int)__brkval);
-   return freeValue;
-}
-
-
 //экран
 #include <OLED_I2C.h>
 
@@ -37,16 +20,24 @@ RTC_DS1307 rtc;
 DHT dht(DHTPIN, DHTTYPE);
 float t;
 
+
 //датчик давления
-#include <BMP085.h>
-//#include <SFE_BMP180.h>
+#include <BME280I2C.h>
 long Pressure = 0, Humidity=0;
+float pres,temp, hum;
 
+BME280I2C::Settings settings(
+   BME280::OSR_X1,
+   BME280::OSR_X1,
+   BME280::OSR_X1,
+   BME280::Mode_Forced,
+   BME280::StandbyTime_1000ms,
+   BME280::Filter_Off,
+   BME280::SpiEnable_False,
+   0x76 // I2C address. I2C specific.
+);
 
-BMP085 dps = BMP085();
-//SFE_BMP180 pressure;
-//#define ALTITUDE 26.0
-//double t, P;
+BME280I2C dps(settings);
 
 //флешка
 
@@ -78,11 +69,11 @@ void setup()
   //часы
   rtc.begin();
   setTime();
-  //rtc.adjust(DateTime(2019, 5, 10, 12, 0, 0));
 
   //датчик давления
   Wire.begin();
-  dps.init(MODE_ULTRA_HIGHRES, 2600, true);
+  dps.begin();
+  //dps.init(MODE_ULTRA_HIGHRES, 2600, true);
   //pressure.begin();
 
   //датчик влажности и давления
@@ -210,8 +201,8 @@ void printTime()
 
 void printPressure()
 {
-  dps.getPressure(&Pressure);
-  Pressure=Pressure/133.322;
+  //dps.getPressure(&Pressure);
+  Pressure=pres/133.322;
   myOLED.printNumI(Pressure, 18, 16); //вывод давления
 }
 
@@ -230,8 +221,7 @@ void printTemperature()
 
 void printHumidity()
 {
-  Humidity=8192-memoryFree();
-myOLED.printNumI(Humidity, 30, 48);
+  myOLED.printNumI(hum, 30, 48);
 }
 
 bool savePriod()
@@ -246,11 +236,9 @@ bool savePriod()
   {
     lastMin=now.minute();
     return true;
-    //break;
   }
   else
     return false;
-  //break;
 }
 
 void saveData()
@@ -332,12 +320,6 @@ void saveData()
       myFile.print(";");
       myFile.println(Humidity);
       myFile.close();
-/*      for(byte z=0;z<2;z++)
-        for(byte x=0;x<3;x++)
-        {
-          myOLED.invPixel(124+x, 1+z);
-        }
-      myOLED.update();*/
     }
     else
     {
@@ -423,11 +405,6 @@ void pushBtn()
               rtc.adjust(DateTime(e, m, d, h, mm, 0));
               setupOLED();
           }
-
-          /*if(pos>4)
-          {
-            
-          }*/
           while(digitalRead(setBtn) == HIGH){}
         }
       }
@@ -552,7 +529,8 @@ void loop()
 {
   now = rtc.now();
   t = dht.readTemperature();
-
+  
+  dps.read(pres, temp, hum); //, tempUnit, presUnit
   switch(set){
     case 0:
       e=now.year();
@@ -573,10 +551,8 @@ void loop()
   if (sdOK&&saveOK) saveData();
   else
   {
-//    if(sdOK) sdOK=SD.begin(53);
     if(!sdOK&&set==0)
     {
-//      sdOK=SD.begin(53);
       for (byte i=0; i<5; i++)
       {
         myOLED.clrLine(123, i, 127, i);
@@ -606,5 +582,4 @@ void loop()
   pushBtn();
   
   myOLED.update();
-  //delay(60000);
 }
