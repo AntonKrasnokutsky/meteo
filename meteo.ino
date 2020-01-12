@@ -26,18 +26,7 @@ float t;
 long Pressure = 0, Humidity=0;
 float pres,temp, hum;
 
-BME280I2C::Settings settings(
-   BME280::OSR_X1,
-   BME280::OSR_X1,
-   BME280::OSR_X1,
-   BME280::Mode_Forced,
-   BME280::StandbyTime_1000ms,
-   BME280::Filter_Off,
-   BME280::SpiEnable_False,
-   0x76 // I2C address. I2C specific.
-);
-
-BME280I2C dps(settings);
+BME280I2C dps;
 
 //флешка
 
@@ -48,8 +37,8 @@ bool sdOK=false;//инициализаци флешки
 File myFile;
 
 int e=2019,m=5,d=15,h=12,mm=0;//год, месяц, день, час, минута
-#define setBtn 3 
-#define plsBtn 4
+#define setBtn 9 
+#define plsBtn 10
 #define TimeOut 1000 //задержка (циклов) перехода в другой режим
 int TimeOutBtn=0; //счетчик задерщки изменения режима
 byte pos=0;//позиция курсора 0 - часы 1 минуты 2 день 3 месяц 4 год
@@ -73,8 +62,6 @@ void setup()
   //датчик давления
   Wire.begin();
   dps.begin();
-  //dps.init(MODE_ULTRA_HIGHRES, 2600, true);
-  //pressure.begin();
 
   //датчик влажности и давления
   dht.begin();
@@ -171,14 +158,10 @@ void setOLED()
   {
      myOLED.printNumI(mm, 30, 0); //вывод времени (часы)
   }
-
-  
-  //myOLED.update();
 }
 
 void printTime()
 {
-  //DateTime now = rtc.now();
   if (now.hour()<10)
   {
      myOLED.printNumI(0, 0, 0); //вывод времени (часы)
@@ -201,7 +184,6 @@ void printTime()
 
 void printPressure()
 {
-  //dps.getPressure(&Pressure);
   Pressure=pres/133.322;
   myOLED.printNumI(Pressure, 18, 16); //вывод давления
 }
@@ -530,7 +512,7 @@ void loop()
   now = rtc.now();
   t = dht.readTemperature();
   
-  dps.read(pres, temp, hum); //, tempUnit, presUnit
+  dps.read(pres, temp, hum);
   switch(set){
     case 0:
       e=now.year();
